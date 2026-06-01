@@ -6,23 +6,20 @@ import authRoutes from './routes/auth.js'
 import routeRoutes from './routes/routes.js'
 import userRoutes from './routes/users.js'
 import { prisma } from './lib/prisma.js'
-import pino from 'pino'
-
-const transport =
-  process.env.NODE_ENV !== 'production'
-    ? pino.transport({
-        target: 'pino-pretty',
-        options: { colorize: true },
-      })
-    : undefined
 
 const app = Fastify({
-  logger: pino(
-    {
-      level: process.env.NODE_ENV === 'production' ? 'warn' : 'info',
-    },
-    transport
-  ),
+  logger:
+    process.env.NODE_ENV !== 'production'
+      ? {
+          level: 'info',
+          transport: {
+            target: 'pino-pretty',
+            options: { colorize: true },
+          },
+        }
+      : {
+          level: 'warn',
+        },
 })
 
 // ─── Plugins ──────────────────────────────────────────────────────────────────
