@@ -1,0 +1,110 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ────────────────────────────────────────────────────────────────────
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+enum WallType {
+  SLAB
+  VERTICAL
+  OVERHANG
+  COMPETITION
+  CAVE
+}
+
+enum RouteStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+// ─── Models ───────────────────────────────────────────────────────────────────
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  role         UserRole @default(USER)
+  level        String   @default("Beginner")
+  avatarColor  String   @default("#F58B1F")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  sessions      Session[]
+  climbedRoutes ClimbedRoute[]
+
+  @@map("users")
+}
+
+model Route {
+  id          String      @id @default(cuid())
+  name        String
+  grade       String      // z.B. "V4"
+  gradeValue  Int         // numerisch für Sortierung / Score
+  location    String      // z.B. "Westwand"
+  wallType    WallType
+  description String
+  status      RouteStatus @default(ACTIVE)
+  qrCode      String?     @unique // generierter QR-Code-Wert (UUID)
+  setAt       DateTime    @default(now()) // wann die Route gesetzt wurde
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  betaSteps     BetaStep[]
+  climbedRoutes ClimbedRoute[]
+
+  @@map("routes")
+}
+
+model BetaStep {
+  id       String @id @default(cuid())
+  routeId  String
+  position Int    // Reihenfolge der Schritte
+  text     String
+
+  route Route @relation(fields: [routeId], references: [id], onDelete: Cascade)
+
+  @@map("beta_steps")
+}
+
+model Session {
+  id        String    @id @default(cuid())
+  userId    String
+  startedAt DateTime  @default(now())
+  endedAt   DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model ClimbedRoute {
+  id        String   @id @default(cuid())
+  userId    String
+  routeId   String
+  attempts  Int      @default(0)
+  topped    Boolean  @default(false)
+  date      DateTime @default(now())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  route Route @relation(fields: [routeId], references: [id], onDelete: Cascade)
+
+  // Ein User kann eine Route mehrfach anlegen (verschiedene Tage),
+  // aber pro Tag nur einmal tracken
+  @@unique([userId, routeId, date])
+  @@map("climbed_routes")
+}
